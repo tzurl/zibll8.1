@@ -1,45 +1,56 @@
-# 工作流名称（可自定义）
+# 工作流名称
 name: 自动解压Zibll主题压缩包
 
-# 触发条件：上传/修改压缩包时自动运行，也支持手动触发
+# 触发条件：压缩包变动/手动触发
 on:
   push:
     paths:
-      - 'zibll-8.1.zip'  # 监听压缩包文件的变动（修改为你的压缩包名）
-  workflow_dispatch:     # 允许手动触发（备用）
+      - 'zibll-8.1.zip'  # 匹配你的压缩包名（带横杠）
+  workflow_dispatch:     # 允许手动触发
 
-# 执行的任务
+# 执行任务
 jobs:
   unzip-and-push:
-    runs-on: ubuntu-latest  # 使用Ubuntu系统运行
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 关键：赋予推送代码的权限
     steps:
-      # 第一步：拉取仓库最新代码
+      # 1. 拉取仓库代码（带完整历史+权限）
       - name: 拉取仓库代码
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 拉取完整提交历史，避免推送冲突
 
-      # 第二步：安装解压工具（Ubuntu默认没有unzip，需要安装）
-      - name: 安装unzip解压工具
-        run: sudo apt-get update && sudo apt-get install unzip -y
+      # 2. 安装解压工具（确保unzip可用）
+      - name: 安装unzip工具
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          # 检查压缩包是否存在（调试用）
+          ls -la | grep zibll-8.1.zip
 
-      # 第三步：解压压缩包到指定文件夹
+      # 3. 解压压缩包（带错误检查）
       - name: 解压Zibll主题压缩包
         run: |
-          # 创建解压目录（避免文件混乱）
+          # 创建解压目录
           mkdir -p zibll-theme
-          # 解压压缩包到zibll-theme文件夹（修改压缩包名和目标文件夹名）
-          unzip zibll-8.1.zip -d zibll-theme/
-          # 可选：解压后删除原压缩包（避免重复解压）
-          # rm zibll-8.1.zip
+          # 解压并检查是否成功
+          if unzip zibll-8.1.zip -d zibll-theme/; then
+            echo "解压成功！"
+            ls -la zibll-theme/  # 查看解压后的文件
+          else
+            echo "解压失败！检查压缩包是否损坏"
+            exit 1
+          fi
 
-      # 第四步：提交解压后的文件并推送到仓库
-      - name: 提交并推送解压后的文件
+      # 4. 提交并推送解压后的文件
+      - name: 提交到仓库
         run: |
-          # 配置Git用户信息（固定写法，Actions需要）
+          # 配置Git用户信息
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          # 添加所有解压后的文件
+          # 添加文件+提交
           git add .
-          # 提交更改（有新文件才提交，避免空提交）
-          git commit -m "自动解压Zibll主题压缩包" || echo "无新文件需要提交"
-          # 推送到main分支（如果你的分支是master，修改为master）
+          git commit -m "自动解压zibll-8.1.zip主题文件" || echo "无新文件需要提交"
+          # 推送（用默认token，已配置权限）
           git push origin main
