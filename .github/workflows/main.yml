@@ -1,0 +1,45 @@
+# 工作流名称（可自定义）
+name: 自动解压Zibll主题压缩包
+
+# 触发条件：上传/修改压缩包时自动运行，也支持手动触发
+on:
+  push:
+    paths:
+      - 'zibll-8.1.zip'  # 监听压缩包文件的变动（修改为你的压缩包名）
+  workflow_dispatch:     # 允许手动触发（备用）
+
+# 执行的任务
+jobs:
+  unzip-and-push:
+    runs-on: ubuntu-latest  # 使用Ubuntu系统运行
+    steps:
+      # 第一步：拉取仓库最新代码
+      - name: 拉取仓库代码
+        uses: actions/checkout@v4
+
+      # 第二步：安装解压工具（Ubuntu默认没有unzip，需要安装）
+      - name: 安装unzip解压工具
+        run: sudo apt-get update && sudo apt-get install unzip -y
+
+      # 第三步：解压压缩包到指定文件夹
+      - name: 解压Zibll主题压缩包
+        run: |
+          # 创建解压目录（避免文件混乱）
+          mkdir -p zibll-theme
+          # 解压压缩包到zibll-theme文件夹（修改压缩包名和目标文件夹名）
+          unzip zibll-8.1.zip -d zibll-theme/
+          # 可选：解压后删除原压缩包（避免重复解压）
+          # rm zibll-8.1.zip
+
+      # 第四步：提交解压后的文件并推送到仓库
+      - name: 提交并推送解压后的文件
+        run: |
+          # 配置Git用户信息（固定写法，Actions需要）
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          # 添加所有解压后的文件
+          git add .
+          # 提交更改（有新文件才提交，避免空提交）
+          git commit -m "自动解压Zibll主题压缩包" || echo "无新文件需要提交"
+          # 推送到main分支（如果你的分支是master，修改为master）
+          git push origin main
