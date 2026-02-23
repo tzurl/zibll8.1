@@ -1,0 +1,45 @@
+# 工作流名称
+name: 移动zibll-theme/zibll文件到根目录（覆盖同名文件）
+
+on:
+  workflow_dispatch:  # 仅手动触发
+
+jobs:
+  move-files:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 推送权限
+    steps:
+      # 1. 拉取仓库代码（包含完整历史）
+      - name: 拉取仓库代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. 强制移动文件（覆盖同名文件）
+      - name: 移动文件并覆盖同名文件
+        run: |
+          # 检查目标目录是否存在
+          if [ -d "zibll-theme/zibll" ]; then
+            shopt -s dotglob  # 包含隐藏文件
+            # 强制移动（-f 覆盖同名文件，-v 显示移动日志）
+            mv -fv zibll-theme/zibll/* ./
+            # 删除空目录（可选）
+            rm -rf zibll-theme/
+            echo "文件移动完成（已覆盖同名文件）！"
+            ls -la  # 查看根目录文件
+          else
+            echo "错误：zibll-theme/zibll目录不存在！"
+            exit 1
+          fi
+
+      # 3. 强制提交（忽略文件已存在的提示）
+      - name: 提交并推送（强制覆盖）
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add -f .  # -f 强制添加所有文件（包括已存在的）
+          # 提交（即使无新文件也不报错）
+          git commit -m "移动zibll-theme/zibll文件到根目录（覆盖同名文件）" || echo "无文件变更需要提交"
+          # 强制推送（解决冲突）
+          git push -f origin main
